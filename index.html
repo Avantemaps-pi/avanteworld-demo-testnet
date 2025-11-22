@@ -479,6 +479,7 @@
             width: 100%;
             height: 100%;
             border: none;
+            background: rgba(0, 0, 0, 0.7);
         }
 
         .avatar-button {
@@ -621,7 +622,7 @@
                 <div class="avatar-creator-title">Create Your Avatar</div>
                 <button class="avatar-creator-close" id="close-avatar-creator">&times;</button>
             </div>
-            <iframe id="avatar-frame"></iframe>
+            <iframe id="avatar-frame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms"></iframe>
         </div>
     </div>
 
@@ -1181,26 +1182,58 @@
             }
 
             initializeAvatarFrame(iframe) {
-                const subdomain = 'default'; // Use Ready Player Me's public subdomain
-                const url = `https://${subdomain}.readyplayer.me/avatar?frameApi`;
+                const url = `https://ready.readyplayer.me/avatar?frameApi`;
 
                 iframe.src = url;
 
-                window.addEventListener('message', (event) => {
-                    if (event.origin !== `https://${subdomain}.readyplayer.me`) return;
+                console.log('Initializing avatar frame with URL:', url);
 
-                    if (event.data.source === 'readyplayerme') {
-                        if (event.data.eventType === 'avatar') {
-                            const { payload } = event.data;
-                            this.avatarUrl = payload.url;
-                            localStorage.setItem('avatarUrl', this.avatarUrl);
-                            console.log('Avatar created:', this.avatarUrl);
-                            document.getElementById('avatar-creator-modal').classList.remove('visible');
+                let messageListenerAttached = false;
 
-                            window.locationExplorer.replaceCharacterWithAvatar(this.avatarUrl);
+                const attachMessageListener = () => {
+                    if (messageListenerAttached) return;
+                    messageListenerAttached = true;
+
+                    const messageHandler = (event) => {
+                        console.log('Message received from origin:', event.origin);
+
+                        const allowedOrigins = ['https://ready.readyplayer.me', 'https://default.readyplayer.me', 'https://viewer.readyplayer.me'];
+                        if (!allowedOrigins.includes(event.origin)) {
+                            console.log('Origin mismatch, expected one of:', allowedOrigins, 'got:', event.origin);
+                            return;
                         }
-                    }
+
+                        if (event.data.source === 'readyplayerme') {
+                            console.log('Event type:', event.data.eventType);
+
+                            if (event.data.eventType === 'avatar') {
+                                const { payload } = event.data;
+                                this.avatarUrl = payload.url;
+                                localStorage.setItem('avatarUrl', this.avatarUrl);
+                                console.log('Avatar created:', this.avatarUrl);
+                                document.getElementById('avatar-creator-modal').classList.remove('visible');
+
+                                window.removeEventListener('message', messageHandler);
+                                messageListenerAttached = false;
+
+                                if (window.locationExplorer) {
+                                    window.locationExplorer.replaceCharacterWithAvatar(this.avatarUrl);
+                                }
+                            }
+                        }
+                    };
+
+                    window.addEventListener('message', messageHandler);
+                };
+
+                iframe.addEventListener('load', () => {
+                    console.log('Avatar frame loaded');
+                    attachMessageListener();
                 });
+
+                setTimeout(() => {
+                    attachMessageListener();
+                }, 500);
             }
         }
 
