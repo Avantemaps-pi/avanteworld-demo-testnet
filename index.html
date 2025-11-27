@@ -684,21 +684,19 @@
                 if (!this.selectedLocation) return;
 
                 try {
-                    this.showLoading();
                     this.hideLocationPicker();
 
                     // Initialize main map focused on selected location
                     await this.initMainMap();
-                    
+
                     // Show location info
                     this.showLocationInfo();
-                    
-                    this.hideLoading();
+
                     console.log('🎯 Exploring location:', this.selectedLocation);
                 } catch (error) {
                     console.error('❌ Failed to explore location:', error);
+                    this.showLoading();
                     this.showError('Failed to load 3D view. Please try again.');
-                    this.hideLoading();
                 }
             }
 
@@ -764,12 +762,6 @@
             async playCinematicZoom() {
                 return new Promise((resolve) => {
                     console.log('🎬 Starting cinematic zoom animation...');
-
-                    // Update loading message
-                    const loading = document.getElementById('loading');
-                    if (loading && !loading.classList.contains('hidden')) {
-                        loading.querySelector('div:last-child').textContent = 'Descending to location...';
-                    }
 
                     // GTA 5-style zoom parameters
                     const targetZoom = 21.85;
